@@ -15,6 +15,12 @@ services:
       - ADMIN_EMAIL=${CADDY_EMAIL}
     networks:
       - internal
+  permissions:
+    image: alpine:latest
+    restart: "no"
+    volumes:
+      - synapse_data:/data
+    command: chown -R 991:991 /data
 
   synapse:
     image: "docker.io/matrixdotorg/synapse:${SYNAPSE_VERSION}"

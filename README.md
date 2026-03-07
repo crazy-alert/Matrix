@@ -68,7 +68,7 @@ docker compose logs -f
 ```bash
 docker exec -it matrix_synapse_1 register_new_matrix_user -c /data/homeserver.yaml http://localhost:8008
 ```
-
+docker run -it --rm -v matrix_synapse_data:/data alpine chown -R 991:991 /data
 
 ---
 #### Coturn — самая капризная часть. Если звонки не работают, проверьте логи и настройки файрвола (UDP порты 3478, 50000-51000 должны быть открыты). Вариант установки Coturn на хост-машину (вне Docker) часто надежнее.
