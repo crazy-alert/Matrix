@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 CONFIG_FILE="/data/homeserver.yaml"
-echo "🔧 Настройка PostgreSQL в конфиге..."
+echo "🔧 Настройка PostgreSQL..."
 sed -i '/^database:/,/^[^ ]/c\
 database:\
   name: psycopg2\

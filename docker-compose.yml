@@ -21,7 +21,7 @@ services:
   synapse:
     image: "docker.io/matrixdotorg/synapse:${SYNAPSE_VERSION}"
     restart: unless-stopped
-    entrypoint: /bin/sh   # <-- полностью заменяем entrypoint
+    entrypoint: /bin/sh
     environment:
       - SYNAPSE_CONFIG_PATH=/data/homeserver.yaml
       - SYNAPSE_SERVER_NAME=${MATRIX_SERVER_NAME:-${DOMAIN}}
@@ -40,15 +40,16 @@ services:
     command:
       - -c
       - |
+        set -e
         if [ ! -f /data/homeserver.yaml ]; then
-          echo '📝 Конфиг не найден. Генерируем новый...'
+          echo '📝 Генерируем конфиг...'
           python -m synapse.app.homeserver \
             --server-name "$${SYNAPSE_SERVER_NAME}" \
             --report-stats "$${SYNAPSE_REPORT_STATS}" \
             -c /data/homeserver.yaml \
-            generate
+            --generate-config
           echo '✅ Конфиг сгенерирован. Настраиваем PostgreSQL...'
-          /scripts/configure_synapse.sh
+          sh /scripts/configure_synapse.sh
         fi
         echo '🚀 Запускаем Synapse...'
         exec python -m synapse.app.homeserver --config-path /data/homeserver.yaml
