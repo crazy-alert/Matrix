@@ -21,40 +21,19 @@ services:
   synapse:
     image: "docker.io/matrixdotorg/synapse:${SYNAPSE_VERSION}"
     restart: unless-stopped
-    entrypoint: /bin/sh
+    entrypoint: /bin/sh   # больше не нужен, но можно оставить
     environment:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - SERVER_NAME=${MATRIX_SERVER_NAME:-${DOMAIN}}
     volumes:
       - synapse_data:/data
       - ./homeserver.template.yaml:/tmp/homeserver.template.yaml:ro
+      - ./scripts:/scripts:ro
     depends_on:
       - synapse_db
     networks:
       - internal
-    command:
-      - -c
-      - |
-        if [ ! -f /data/homeserver.yaml ]; then
-          echo '📝 Copying config template...'
-          cp /tmp/homeserver.template.yaml /data/homeserver.yaml
-          echo '🔧 Substituting SERVER_NAME...'
-          sed -i "s/__SERVER_NAME__/$${SERVER_NAME}/g" /data/homeserver.yaml
-          echo '🔧 Substituting POSTGRES_PASSWORD...'
-          sed -i "s/__POSTGRES_PASSWORD__/$${POSTGRES_PASSWORD}/g" /data/homeserver.yaml
-          # Generate missing secrets
-          if ! grep -q "registration_shared_secret" /data/homeserver.yaml; then
-            echo 'registration_shared_secret: '$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1) >> /data/homeserver.yaml
-          fi
-          if ! grep -q "macaroon_secret_key" /data/homeserver.yaml; then
-            echo 'macaroon_secret_key: '$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1) >> /data/homeserver.yaml
-          fi
-          if ! grep -q "form_secret" /data/homeserver.yaml; then
-            echo 'form_secret: '$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1) >> /data/homeserver.yaml
-          fi
-        fi
-        echo '🚀 Starting Synapse...'
-        exec python -m synapse.app.homeserver --config-path /data/homeserver.yaml
+  command: /scripts/start.sh
 
   synapse_db:
     image: "docker.io/postgres:${POSTGRES_VERSION}"
