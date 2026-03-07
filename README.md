@@ -73,13 +73,32 @@ docker run -it --rm -v matrix_synapse_data:/data alpine chown -R 991:991 /data
 ---
 #### Coturn — самая капризная часть. Если звонки не работают, проверьте логи и настройки файрвола (UDP порты 3478, 50000-51000 должны быть открыты). Вариант установки Coturn на хост-машину (вне Docker) часто надежнее.
 
-Если вы не планируете использовать звонки, можно закомментировать или удалить сервис coturn из `docker-compose.yml`.
----
-### 📦 Управление стеком
-* Остановить: ```docker compose down```
-* Запустить: ```docker compose up -d```
-* Перезапустить конкретный сервис: ```docker compose restart tuwunel```
-* Посмотреть логи: ```docker compose logs -f [имя_сервиса]```
-* Остановить, обновить образы, запустить: ```docker compose down && docker compose pull && docker compose up -d```
-* Остановить, обновить образы, запустить: ```docker-compose down && docker-compose pull && docker-compose up -d```
-* Остановить, обновить ропозиторий, запустить: ```docker-compose down && git pull && docker-compose up -d```
+Добавить правила:
+```bash
+ufw allow 3478/udp &&
+ufw allow 50000:51000/udp
+```
+Убедитесь, что правила добавлены:
+```bash
+ufw status numbered
+```
+
+Вы должны увидеть что-то похожее на это:
+```
+Status: active
+
+     To                         Action      From
+     --                         ------      ----
+[ 1] 80/tcp                     ALLOW IN    Anywhere                   # HTTP
+[ 2] 443/tcp                    ALLOW IN    Anywhere                   # HTTPS
+[ 3] 8448/tcp                   ALLOW IN    Anywhere                   # Matrix (или другой сервис)
+[ 4] 22/tcp                     ALLOW IN    Anywhere                   # ssh
+[ 5] 3478/udp                   ALLOW IN    Anywhere
+[ 6] 50000:51000/udp            ALLOW IN    Anywhere
+[ 7] 80/tcp (v6)                ALLOW IN    Anywhere (v6)              # HTTP
+[ 8] 443/tcp (v6)               ALLOW IN    Anywhere (v6)              # HTTPS
+[ 9] 8448/tcp (v6)              ALLOW IN    Anywhere (v6)              # Matrix (или другой сервис)
+[10] 22/tcp (v6)                ALLOW IN    Anywhere (v6)              # ssh
+[11] 3478/udp (v6)              ALLOW IN    Anywhere (v6)
+[12] 50000:51000/udp (v6)       ALLOW IN    Anywhere (v6)
+```
