@@ -1,0 +1,15 @@
+use-auth-secret
+static-auth-secret=$COTURN_STATIC_AUTH_SECRET
+realm=$DOMAIN
+no-tcp-relay
+listening-port=3478
+listening-ip=$COTURN_INTERNAL_IP
+external-ip=$COTURN_EXTERNAL_IP
+min-port=49160
+max-port=49200
+user-quota=12
+total-quota=1200
+no-cli
+allow-loopback-peers
+log-file=/var/log/coturn.log
+verbose

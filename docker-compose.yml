@@ -1,95 +1,82 @@
+version: '3'
+
 services:
-  # --- База данных PostgreSQL для Synapse ---
-  db:
-    image: docker.io/postgres:14-alpine
-    container_name: matrix_postgres
-    restart: always
-    environment:
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
-      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
-    volumes:
-      - ./pgdata:/var/lib/postgresql/data
-    networks:
-      - internal_network
-
-  # --- Основной сервер Synapse ---
-  synapse:
-    image: docker.io/matrixdotorg/synapse:latest
-    container_name: matrix_synapse
-    restart: always
-    env_file:
-      - .env
-    environment:
-      - SYNAPSE_CONFIG_PATH=/data/homeserver.yaml
-      - SERVER_NAME=${MATRIX_SERVER_NAME}      # из .env
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD} # из .env
-    volumes:
-      - ./data:/data
-    depends_on:
-      - db
-    networks:
-      - internal_network
-    command: >
-      sh -c "
-      sed -i 's/example.org/'\"$SERVER_NAME\"'/g' /data/homeserver.yaml &&
-      sed -i 's/<POSTGRES_PASSWORD>/'\"$POSTGRES_PASSWORD\"'/g' /data/homeserver.yaml &&
-      exec python -m synapse.app.homeserver --config-path /data/homeserver.yaml
-      "
-
-
-  # --- Админ-панель Synapse-Admin (опционально) ---
-  synapse-admin:
-    image: docker.io/awesometechnologies/synapse-admin:latest
-    container_name: matrix_admin
-    restart: always
-    networks:
-      - internal_network
-    # НЕ открываем порты наружу.
-
   # --- Обратный прокси Caddy (автоматический HTTPS) ---
   caddy:
-    image: docker.io/library/caddy:2-alpine
-    container_name: matrix_caddy
+    image: "caddy:${CADDY_VERSION:-2-alpine}"
     restart: always
     ports:
       - "80:80"
       - "443:443"
-      - "3478:3478"          # Порт для TURN (UDP и TCP)
     volumes:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
     environment:
-      - MATRIX_DOMAIN=${MATRIX_DOMAIN}
-      - ELEMENT_DOMAIN=${ELEMENT_DOMAIN}
-      - ROOT_DOMAIN=${YOUR_ROOT_DOMAIN}
-      - ADMIN_EMAIL=${ADMIN_EMAIL}
+      - DOMAIN=${DOMAIN}
+      - MATRIX_DOMAIN=matrix.${DOMAIN}
+      - ADMIN_EMAIL=${CADDY_EMAIL}
     networks:
-      - internal_network
+      - internal
 
-  # --- TURN сервер Coturn (настраивается отдельно, см. заметки ниже) ---
-  # ВНИМАНИЕ: Из-за сложностей с пробросом UDP и NAT, Coturn часто проще ставить на хост.
-  # Этот блок - пример для запуска в контейнере с host-сетью.
-  coturn:
-    image: docker.io/coturn/coturn:latest
-    container_name: matrix_coturn
-    restart: always
-    network_mode: host  # Важно для корректной работы UDP на реальном IP
+  # --- Основной сервер Synapse ---
+  synapse:
+    image: "docker.io/matrixdotorg/synapse:${SYNAPSE_VERSION}"
+    restart: unless-stopped
     environment:
-      - TURN_STATIC_AUTH_SECRET=${TURN_STATIC_AUTH_SECRET}
-      - TURN_REALM=${TURN_REALM}
-      - TURN_EXTERNAL_IP=${TURN_EXTERNAL_IP}
-      - TURN_INTERNAL_IP=${TURN_INTERNAL_IP}
+      - SYNAPSE_CONFIG_PATH=/data/homeserver.yaml
     volumes:
-      - ./coturn/turnserver.conf:/etc/turnserver.conf:ro
-      - ./coturn/logs:/var/log/coturn
+      - synapse_data:/data
+    depends_on:
+      - synapse_db
+    networks:
+      - internal
+
+  # --- База данных PostgreSQL для Synapse ---
+  synapse_db:
+    image: "docker.io/postgres:${POSTGRES_VERSION}"
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=synapse
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
+    volumes:
+      - synapse_db_data:/var/lib/postgresql/data
+    networks:
+      - internal
+
+  # --- TURN сервер Coturn (для аудио/видеозвонков) ---
+  coturn:
+    image: "instrumentisto/coturn:${COTURN_VERSION}"
+    restart: unless-stopped
+    ports:
+      - "3478:3478"
+      - "5349:5349"
+      - "49160-49200:49160-49200/udp"
+    volumes:
+      - ./coturn/turnserver.conf.template:/etc/coturn/turnserver.conf.template:ro
+      - ./coturn/logs:/var/log/coturn          # создайте эту папку заранее
+    environment:
+      - COTURN_STATIC_AUTH_SECRET=${COTURN_STATIC_AUTH_SECRET}
+      - COTURN_EXTERNAL_IP=${COTURN_EXTERNAL_IP}
+      - COTURN_INTERNAL_IP=${COTURN_INTERNAL_IP}
+      - DOMAIN=${DOMAIN}
+    networks:
+      - internal
+    command:
+      - /bin/sh
+      - -c
+      - |
+        envsubst < /etc/coturn/turnserver.conf.template > /etc/coturn/turnserver.conf &&
+        exec turnserver -c /etc/coturn/turnserver.conf
 
 volumes:
   caddy_data:
   caddy_config:
+  synapse_data:
+  synapse_db_data:
+  # Том для coturn не нужен, если конфиг пробрасывается через файл
 
 networks:
-  internal_network:
+  internal:
     driver: bridge

@@ -1,43 +1,37 @@
+# Импортируем переменные из окружения контейнера Caddy
 {$MATRIX_DOMAIN} {
-# Основной прокси на Synapse (порт 8008 внутри сети)
-    handle_path /_matrix/* {
-        reverse_proxy synapse:8008
-    }
+                 # Прокси запросов к Matrix API Synapse
+                 handle_path /_matrix/* {
+                                        reverse_proxy synapse:8008
+                                        }
 
-     handle_path /_synapse/client/* {
-        reverse_proxy synapse:8008
-    }
-     # Опционально: если хотите отдавать что-то ещё на этом домене
-     respond 404
- }
+                 handle_path /_synapse/client/* {
+                                                reverse_proxy synapse:8008
+                                                }
 
-{$ELEMENT_DOMAIN} {
-    reverse_proxy element:80
-}
+                 # Всё остальное на этом поддомене — 404
+                 respond 404
+                 }
 
-# Отдельный блок для административной панели
-admin.{$MATRIX_DOMAIN} {
-    reverse_proxy synapse-admin:80
-}
+# Корневой домен — обслуживает .well-known для федерации
+{$DOMAIN} {
+          # Отвечаем на запросы .well-known/matrix/server
+          handle /.well-known/matrix/server {
+                                            header Content-Type application/json
+                                            header Access-Control-Allow-Origin *
+                                            respond `{"m.server": "{$MATRIX_DOMAIN}:443"}`
+                                            }
 
-# Критически важные endpoints на корневом домене для федерации
-{$ROOT_DOMAIN} {
-    # Отдаем файлы .well-known для matrix federation
-    handle /.well-known/matrix/server {
-        header Content-Type application/json
-        header Access-Control-Allow-Origin *
-        respond `{"m.server": "{$MATRIX_DOMAIN}:443"}`
-    }
+          # Отвечаем на запросы .well-known/matrix/client
+          handle /.well-known/matrix/client {
+                                            header Content-Type application/json
+                                            header Access-Control-Allow-Origin *
+                                            respond `{"m.homeserver": {"base_url": "https://{$MATRIX_DOMAIN}"}}`
+                                            }
 
-    handle /.well-known/matrix/client {
-        header Content-Type application/json
-        header Access-Control-Allow-Origin *
-        respond `{"m.homeserver": {"base_url": "https://{$MATRIX_DOMAIN}"}}`
-    }
-
-    # Все остальные запросы на корневой домен можно проксировать на ваш основной сайт
-    # handle {
-    #     reverse_proxy ваш_основной_сайт
-    # }
-    respond 404
-}
+          # Если на корневом домене есть ещё какой-то сайт, раскомментируйте и настройте:
+          # handle {
+          #     reverse_proxy ваш_основной_сайт
+          # }
+          respond 404
+          }
