@@ -1,0 +1,88 @@
+services:
+  # --- База данных PostgreSQL для Synapse ---
+  synapse_db:
+    image: docker.io/postgres:14-alpine
+    container_name: matrix_postgres
+    restart: always
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
+    volumes:
+      - ./pgdata:/var/lib/postgresql/data
+    networks:
+      - internal_network
+
+  # --- Основной сервер Synapse ---
+  synapse:
+    image: docker.io/matrixdotorg/synapse:latest
+    container_name: matrix_synapse
+    restart: always
+    environment:
+      - SYNAPSE_CONFIG_PATH=/data/homeserver.yaml
+      # Переменные для первоначальной генерации конфига (если data пуста)
+      - SYNAPSE_SERVER_NAME=${MATRIX_SERVER_NAME}
+      - SYNAPSE_REPORT_STATS=yes
+    volumes:
+      - ./data:/data
+    depends_on:
+      - synapse_db
+    networks:
+      - internal_network
+    # НЕ открываем порты наружу. Все соединения идут через Caddy.
+
+  # --- Админ-панель Synapse-Admin (опционально) ---
+  synapse-admin:
+    image: docker.io/awesometechnologies/synapse-admin:latest
+    container_name: matrix_admin
+    restart: always
+    networks:
+      - internal_network
+    # НЕ открываем порты наружу.
+
+  # --- Обратный прокси Caddy (автоматический HTTPS) ---
+  caddy:
+    image: docker.io/library/caddy:2-alpine
+    container_name: matrix_caddy
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+      - "3478:3478"          # Порт для TURN (UDP и TCP)
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      - MATRIX_DOMAIN=${MATRIX_DOMAIN}
+      - ELEMENT_DOMAIN=${ELEMENT_DOMAIN}
+      - ROOT_DOMAIN=${YOUR_ROOT_DOMAIN}
+      - ADMIN_EMAIL=${ADMIN_EMAIL}
+    networks:
+      - internal_network
+
+  # --- TURN сервер Coturn (настраивается отдельно, см. заметки ниже) ---
+  # ВНИМАНИЕ: Из-за сложностей с пробросом UDP и NAT, Coturn часто проще ставить на хост.
+  # Этот блок - пример для запуска в контейнере с host-сетью.
+  coturn:
+    image: docker.io/coturn/coturn:latest
+    container_name: matrix_coturn
+    restart: always
+    network_mode: host  # Важно для корректной работы UDP на реальном IP
+    environment:
+      - TURN_STATIC_AUTH_SECRET=${TURN_STATIC_AUTH_SECRET}
+      - TURN_REALM=${TURN_REALM}
+      - TURN_EXTERNAL_IP=${TURN_EXTERNAL_IP}
+      - TURN_INTERNAL_IP=${TURN_INTERNAL_IP}
+    volumes:
+      - ./coturn/turnserver.conf:/etc/turnserver.conf:ro
+      - ./coturn/logs:/var/log/coturn
+
+volumes:
+  caddy_data:
+  caddy_config:
+
+networks:
+  internal_network:
+    driver: bridge
