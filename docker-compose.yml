@@ -24,7 +24,7 @@ services:
     entrypoint: /bin/sh
     environment:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - SERVER_NAME=${MATRIX_SERVER_NAME:-${DOMAIN}}  # новая переменная
+      - SERVER_NAME=${MATRIX_SERVER_NAME:-${DOMAIN}}
     volumes:
       - synapse_data:/data
       - ./homeserver.template.yaml:/tmp/homeserver.template.yaml:ro
@@ -36,13 +36,13 @@ services:
       - -c
       - |
         if [ ! -f /data/homeserver.yaml ]; then
-          echo '📝 Копируем шаблон конфига...'
+          echo '📝 Copying config template...'
           cp /tmp/homeserver.template.yaml /data/homeserver.yaml
-          echo '🔧 Подставляем SERVER_NAME...'
-          sed -i "s/{{SERVER_NAME}}/$${SERVER_NAME}/g" /data/homeserver.yaml
-          echo '🔧 Подставляем пароль PostgreSQL...'
-          sed -i "s/{{POSTGRES_PASSWORD}}/$${POSTGRES_PASSWORD}/g" /data/homeserver.yaml
-          # Генерируем недостающие секреты, если их нет в шаблоне
+          echo '🔧 Substituting SERVER_NAME...'
+          sed -i "s/__SERVER_NAME__/$${SERVER_NAME}/g" /data/homeserver.yaml
+          echo '🔧 Substituting POSTGRES_PASSWORD...'
+          sed -i "s/__POSTGRES_PASSWORD__/$${POSTGRES_PASSWORD}/g" /data/homeserver.yaml
+          # Generate missing secrets
           if ! grep -q "registration_shared_secret" /data/homeserver.yaml; then
             echo 'registration_shared_secret: '$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1) >> /data/homeserver.yaml
           fi
@@ -53,7 +53,7 @@ services:
             echo 'form_secret: '$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1) >> /data/homeserver.yaml
           fi
         fi
-        echo '🚀 Запускаем Synapse...'
+        echo '🚀 Starting Synapse...'
         exec python -m synapse.app.homeserver --config-path /data/homeserver.yaml
 
   synapse_db:

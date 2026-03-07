@@ -1,5 +1,4 @@
-# Шаблон конфигурации Synapse
-server_name: {{SERVER_NAME}}
+server_name: __SERVER_NAME__
 pid_file: /homeserver.pid
 listeners:
   - port: 8008
@@ -12,12 +11,12 @@ database:
   name: psycopg2
   args:
     user: synapse
-    password: {{POSTGRES_PASSWORD}}
+    password: __POSTGRES_PASSWORD__
     database: synapse
     host: synapse_db
     cp_min: 5
     cp_max: 10
-log_config: "/data/{{SERVER_NAME}}.log.config"
+log_config: "/data/__SERVER_NAME__.log.config"
 media_store_path: /data/media_store
 enable_registration: true
 enable_registration_without_verification: true
