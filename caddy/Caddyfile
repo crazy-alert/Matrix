@@ -1,17 +1,20 @@
 {$MATRIX_DOMAIN} {
-                 reverse_proxy synapse:8008
-                 }
+     reverse_proxy synapse:8008
+ }
 
 {$DOMAIN} {
-                            handle /.well-known/matrix/server {
-                                                              header Content-Type application/json
-                                                              header Access-Control-Allow-Origin *
-                                                              respond `{"m.server": "{$MATRIX_DOMAIN}:443"}`
-                                                              }
-                            handle /.well-known/matrix/client {
-                                                              header Content-Type application/json
-                                                              header Access-Control-Allow-Origin *
-                                                              respond `{"m.homeserver": {"base_url": "https://{$MATRIX_DOMAIN}"}}`
-                                                              }
-                            respond 404
-                            }
+    handle /.well-known/matrix/server {
+        header Content-Type application/json
+        header Access-Control-Allow-Origin *
+        respond `{"m.server": "{$MATRIX_DOMAIN}:443"}`
+    }
+    handle /.well-known/matrix/client {
+        header Content-Type application/json
+        header Access-Control-Allow-Origin *
+        respond `{"m.homeserver": {"base_url": "https://{$MATRIX_DOMAIN}"}}`
+    }
+    respond 404
+}
+admin.{$DOMAIN} {
+    reverse_proxy synapse-admin:80
+}
