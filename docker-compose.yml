@@ -33,7 +33,7 @@ services:
       - synapse_db
     networks:
       - internal
-  command: /scripts/start.sh
+    command: /scripts/start.sh
 
   synapse_db:
     image: "docker.io/postgres:${POSTGRES_VERSION}"
