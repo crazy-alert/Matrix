@@ -21,6 +21,7 @@ services:
   synapse:
     image: "docker.io/matrixdotorg/synapse:${SYNAPSE_VERSION}"
     restart: unless-stopped
+    entrypoint: /bin/sh   # <-- полностью заменяем entrypoint
     environment:
       - SYNAPSE_CONFIG_PATH=/data/homeserver.yaml
       - SYNAPSE_SERVER_NAME=${MATRIX_SERVER_NAME:-${DOMAIN}}
@@ -36,9 +37,7 @@ services:
       - synapse_db
     networks:
       - internal
-    # ПРАВИЛЬНЫЙ ФОРМАТ: команда передаётся как список
     command:
-      - /bin/sh
       - -c
       - |
         if [ ! -f /data/homeserver.yaml ]; then
