@@ -36,16 +36,17 @@ services:
       - synapse_db
     networks:
       - internal
-    # ПРОСТОЙ И НАДЁЖНЫЙ ВАРИАНТ:
     entrypoint: /bin/sh
     command: >
       -c "
       if [ ! -f /data/homeserver.yaml ]; then
         echo '📝 Конфиг не найден. Генерируем новый...' &&
-        python -m synapse.app.homeserver -c /data/homeserver.yaml generate
-          --server-name=$${SYNAPSE_SERVER_NAME}
-          --report-stats=$${SYNAPSE_REPORT_STATS} &&
-        echo '⚙️ Настраиваем PostgreSQL...' &&
+        python -m synapse.app.homeserver
+          --server-name $${SYNAPSE_SERVER_NAME}
+          --report-stats $${SYNAPSE_REPORT_STATS}
+          -c /data/homeserver.yaml
+          generate &&
+        echo '✅ Конфиг сгенерирован. Настраиваем PostgreSQL...' &&
         /scripts/configure_synapse.sh
       fi &&
       echo '🚀 Запускаем Synapse...' &&
