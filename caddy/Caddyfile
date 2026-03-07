@@ -1,37 +1,17 @@
-# Импортируем переменные из окружения контейнера Caddy
 {$MATRIX_DOMAIN} {
-                 # Прокси запросов к Matrix API Synapse
-                 handle_path /_matrix/* {
-                                        reverse_proxy synapse:8008
-                                        }
-
-                 handle_path /_synapse/client/* {
-                                                reverse_proxy synapse:8008
-                                                }
-
-                 # Всё остальное на этом поддомене — 404
-                 respond 404
+                 reverse_proxy synapse:8008
                  }
 
-# Корневой домен — обслуживает .well-known для федерации
 {$DOMAIN} {
-          # Отвечаем на запросы .well-known/matrix/server
-          handle /.well-known/matrix/server {
-                                            header Content-Type application/json
-                                            header Access-Control-Allow-Origin *
-                                            respond `{"m.server": "{$MATRIX_DOMAIN}:443"}`
-                                            }
-
-          # Отвечаем на запросы .well-known/matrix/client
-          handle /.well-known/matrix/client {
-                                            header Content-Type application/json
-                                            header Access-Control-Allow-Origin *
-                                            respond `{"m.homeserver": {"base_url": "https://{$MATRIX_DOMAIN}"}}`
-                                            }
-
-          # Если на корневом домене есть ещё какой-то сайт, раскомментируйте и настройте:
-          # handle {
-          #     reverse_proxy ваш_основной_сайт
-          # }
-          respond 404
-          }
+                            handle /.well-known/matrix/server {
+                                                              header Content-Type application/json
+                                                              header Access-Control-Allow-Origin *
+                                                              respond `{"m.server": "{$MATRIX_DOMAIN}:443"}`
+                                                              }
+                            handle /.well-known/matrix/client {
+                                                              header Content-Type application/json
+                                                              header Access-Control-Allow-Origin *
+                                                              respond `{"m.homeserver": {"base_url": "https://{$MATRIX_DOMAIN}"}}`
+                                                              }
+                            respond 404
+                            }
