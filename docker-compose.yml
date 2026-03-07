@@ -36,22 +36,23 @@ services:
       - synapse_db
     networks:
       - internal
-    entrypoint: /bin/sh
-    command: >
-      -c "
-      if [ ! -f /data/homeserver.yaml ]; then
-        echo '📝 Конфиг не найден. Генерируем новый...' &&
-        python -m synapse.app.homeserver
-          --server-name $${SYNAPSE_SERVER_NAME}
-          --report-stats $${SYNAPSE_REPORT_STATS}
-          -c /data/homeserver.yaml
-          generate &&
-        echo '✅ Конфиг сгенерирован. Настраиваем PostgreSQL...' &&
-        /scripts/configure_synapse.sh
-      fi &&
-      echo '🚀 Запускаем Synapse...' &&
-      exec python -m synapse.app.homeserver --config-path /data/homeserver.yaml
-      "
+    # ПРАВИЛЬНЫЙ ФОРМАТ: команда передаётся как список
+    command:
+      - /bin/sh
+      - -c
+      - |
+        if [ ! -f /data/homeserver.yaml ]; then
+          echo '📝 Конфиг не найден. Генерируем новый...'
+          python -m synapse.app.homeserver \
+            --server-name "$${SYNAPSE_SERVER_NAME}" \
+            --report-stats "$${SYNAPSE_REPORT_STATS}" \
+            -c /data/homeserver.yaml \
+            generate
+          echo '✅ Конфиг сгенерирован. Настраиваем PostgreSQL...'
+          /scripts/configure_synapse.sh
+        fi
+        echo '🚀 Запускаем Synapse...'
+        exec python -m synapse.app.homeserver --config-path /data/homeserver.yaml
 
   synapse_db:
     image: "docker.io/postgres:${POSTGRES_VERSION}"
