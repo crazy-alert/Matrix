@@ -25,20 +25,27 @@ mkdir /opt/Matrix &&
 cd /opt/Matrix &&
 git clone -v  https://github.com/crazy-alert/Matrix.git . 
 ```
-Скопируйте файл примеры конфигурации и отредактируйте его:
-```bash
-cp example.env .env &&
-nano .env
-```
-```bash
-chmod +x generate_config.sh && ./generate_config.sh
-```
 ---
 ### 2. Настройка
 В редакторе nao сочетания кнопок: `Ctrl+o` - сохранить (после нажать Enter), `Ctrl+x` - закрыть
 
+Скопируйте файл примеры конфигурации и отредактируйте его:
+Чтобы узнать COTURN_INTERNAL_IP (внутренний IP вашего сервера), выполните на сервере одну из этих команд:
+
+```bash
+hostname -I | awk '{print $1}'
+```
 Это главный конфиг сервера. Обязательно замените:
 server_name – ваш домен (например, `matrix.example.ru`).
+
+```bash
+cp example.env .env &&
+nano .env
+```
+Создайте конфиг matrix
+```bash
+chmod +x generate_config.sh && ./generate_config.sh
+```
 ---
 ### 3. 🚀 Запуск сервера
 Выполните в каталоге с ```docker-compose.yml```:
@@ -50,11 +57,19 @@ docker-compose up -d
 ```bash
 docker compose logs -f
 ```
-Чтобы узнать COTURN_INTERNAL_IP (внутренний IP вашего сервера), выполните на сервере одну из этих команд:
+---
 
+### Создать пользователя:
+- Вас попросят ввести:
+  - имя пользователя (без домена, например friend)
+  - пароль
+  - подтверждение пароля
+  - сделать ли администратором (ответьте yes или no)
 ```bash
-hostname -I | awk '{print $1}'
+docker exec -it matrix_synapse_1 register_new_matrix_user -c /data/homeserver.yaml http://localhost:8008
 ```
+
+
 ---
 #### Coturn — самая капризная часть. Если звонки не работают, проверьте логи и настройки файрвола (UDP порты 3478, 50000-51000 должны быть открыты). Вариант установки Coturn на хост-машину (вне Docker) часто надежнее.
 
