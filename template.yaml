@@ -22,3 +22,4 @@ enable_registration_without_verification: true
 report_stats: true
 trusted_key_servers:
   - server_name: "matrix.org"
+
