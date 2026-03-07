@@ -23,8 +23,7 @@ apt update && apt install -y git
 ```bash
 mkdir /opt/Matrix &&
 cd /opt/Matrix &&
-git clone -v  https://github.com/crazy-alert/Matrix.git . &&
-find . -name "*.sh" -exec chmod +x {} \;
+git clone -v  https://github.com/crazy-alert/Matrix.git . 
 ```
 Скопируйте файл примеры конфигурации и отредактируйте его:
 ```bash
@@ -32,7 +31,7 @@ cp example.env .env &&
 nano .env
 ```
 ```bash
-./generate_config.sh
+chmod +x generate_config.sh && ./generate_config.sh
 ```
 ---
 ### 2. Настройка

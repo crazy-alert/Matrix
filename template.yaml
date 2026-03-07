@@ -16,7 +16,6 @@ database:
     host: synapse_db
     cp_min: 5
     cp_max: 10
-log_config: "/data/__SERVER_NAME__.log.config"
 media_store_path: /data/media_store
 enable_registration: true
 enable_registration_without_verification: true
