@@ -23,16 +23,12 @@ services:
     restart: unless-stopped
     entrypoint: /bin/sh
     environment:
-      - SYNAPSE_CONFIG_PATH=/data/homeserver.yaml
-      - SYNAPSE_SERVER_NAME=${MATRIX_SERVER_NAME:-${DOMAIN}}
-      - SYNAPSE_REPORT_STATS=yes
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_USER=synapse
-      - POSTGRES_DB=synapse
-      - POSTGRES_HOST=synapse_db
+      - SYNAPSE_SERVER_NAME=${MATRIX_SERVER_NAME:-${DOMAIN}}
+      # Другие переменные не нужны, всё будет в шаблоне
     volumes:
       - synapse_data:/data
-      - ./scripts:/scripts:ro
+      - ./homeserver.template.yaml:/tmp/homeserver.template.yaml:ro
     depends_on:
       - synapse_db
     networks:
@@ -41,15 +37,17 @@ services:
       - -c
       - |
         if [ ! -f /data/homeserver.yaml ]; then
-          echo '📝 Генерируем конфиг...'
-          python -m synapse.app.homeserver \
-            --server-name "$${SYNAPSE_SERVER_NAME}" \
-            --report-stats "$${SYNAPSE_REPORT_STATS}" \
-            -c /data/homeserver.yaml \
-            --generate-config
+          echo '📝 Копируем шаблон конфига...'
+          cp /tmp/homeserver.template.yaml /data/homeserver.yaml
+          echo '🔧 Подставляем пароль PostgreSQL...'
+          sed -i "s/{{POSTGRES_PASSWORD}}/$${POSTGRES_PASSWORD}/g" /data/homeserver.yaml
+          # Если нужны другие секреты – добавьте аналогично
+          # Например, сгенерировать регистрационный секрет, если он отсутствует
+          if ! grep -q "registration_shared_secret" /data/homeserver.yaml; then
+            echo 'registration_shared_secret: '$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1) >> /data/homeserver.yaml
+          fi
+          # Аналогично для macaroon_secret_key и form_secret
         fi
-        echo '🔧 Применяем настройки...'
-        sh /scripts/configure_synapse.sh
         echo '🚀 Запускаем Synapse...'
         exec python -m synapse.app.homeserver --config-path /data/homeserver.yaml
 
