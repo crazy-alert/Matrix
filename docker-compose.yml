@@ -47,7 +47,7 @@ services:
       - synapse_db_data:/var/lib/postgresql/data
     networks:
       - internal
-      -
+
   synapse-admin:
     image: awesometechnologies/synapse-admin:latest
     container_name: matrix_admin
