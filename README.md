@@ -23,7 +23,8 @@ apt update && apt install -y git
 ```bash
 mkdir /opt/Matrix &&
 cd /opt/Matrix &&
-git clone -v  https://github.com/crazy-alert/Matrix.git .
+git clone -v  https://github.com/crazy-alert/Matrix.git . &&
+chmod +x scripts/configure_synapse.sh
 ```
 Скопируйте файл примеры конфигурации и отредактируйте его:
 ```bash
@@ -46,6 +47,11 @@ docker-compose up -d
 Через минуту все контейнеры будут запущены. Проверьте логи:
 ```bash
 docker compose logs -f
+```
+Чтобы узнать COTURN_INTERNAL_IP (внутренний IP вашего сервера), выполните на сервере одну из этих команд:
+
+```bash
+hostname -I | awk '{print $1}'
 ```
 ---
 #### Coturn — самая капризная часть. Если звонки не работают, проверьте логи и настройки файрвола (UDP порты 3478, 50000-51000 должны быть открыты). Вариант установки Coturn на хост-машину (вне Docker) часто надежнее.
