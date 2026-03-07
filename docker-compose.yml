@@ -1,5 +1,3 @@
-version: '3'
-
 services:
   caddy:
     image: "caddy:${CADDY_VERSION:-2-alpine}"
@@ -21,19 +19,15 @@ services:
   synapse:
     image: "docker.io/matrixdotorg/synapse:${SYNAPSE_VERSION}"
     restart: unless-stopped
-    entrypoint: /bin/sh   # больше не нужен, но можно оставить
     environment:
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - SERVER_NAME=${MATRIX_SERVER_NAME:-${DOMAIN}}
+      - SYNAPSE_CONFIG_PATH=/data/homeserver.yaml
     volumes:
-      - synapse_data:/data
-      - ./homeserver.template.yaml:/tmp/homeserver.template.yaml:ro
-      - ./scripts:/scripts:ro
+      - ./homeserver.yaml:/data/homeserver.yaml:ro   # монтируем готовый конфиг
+      - synapse_data:/data   # для логов, медиа и ключей (они будут создаваться)
     depends_on:
       - synapse_db
     networks:
       - internal
-    command: /scripts/start.sh
 
   synapse_db:
     image: "docker.io/postgres:${POSTGRES_VERSION}"

@@ -31,6 +31,9 @@ find scripts -name "*.sh" -exec chmod +x {} \;
 cp example.env .env &&
 nano .env
 ```
+```bash
+./generate_config.sh
+```
 ---
 ### 2. Настройка
 В редакторе nao сочетания кнопок: `Ctrl+o` - сохранить (после нажать Enter), `Ctrl+x` - закрыть
