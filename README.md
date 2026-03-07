@@ -102,3 +102,15 @@ Status: active
 [11] 3478/udp (v6)              ALLOW IN    Anywhere (v6)
 [12] 50000:51000/udp (v6)       ALLOW IN    Anywhere (v6)
 ```
+----
+Посмотреть пользователей:
+
+```bash
+docker exec -it matrix_synapse_db_1 psql -U synapse -d synapse -c "SELECT name FROM users;"
+```
+
+Чтобы установить (сменить) пароль для существующего пользователя в Synapse, выполните команду:
+```bash
+docker exec -it matrix_synapse_1 register_new_matrix_user -c /data/homeserver.yaml -u ИМЯ_ПОЛЬЗОВАТЕЛЯ -p НОВЫЙ_ПАРОЛЬ http://localhost:8008
+```
+
