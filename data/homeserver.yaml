@@ -1,0 +1,57 @@
+# Доменное имя вашего сервера (то, что будет после @ в идентификаторе пользователя)
+server_name: "example.org"
+
+# Отчёты об использовании (рекомендуется оставить)
+report_stats: true
+
+# Путь к базе данных (используем PostgreSQL)
+database:
+  name: psycopg2
+  args:
+    user: synapse
+    password: <POSTGRES_PASSWORD>       # замените на пароль из .env
+    database: synapse
+    host: synapse_db
+    cp_min: 5
+    cp_max: 10
+
+# Логи (можно оставить по умолчанию)
+logs:
+  - name: synapse
+    level: INFO
+
+# Настройки регистрации (ключевой блок)
+enable_registration: true                       # разрешаем регистрацию
+enable_registration_without_verification: true   # не требуем подтверждения email/капчи
+registration_requires_token: true                # обязательно требовать токен
+
+# Настройки безопасности (пример, можно дополнить)
+password_config:
+  enabled: true
+
+# Пути для статических файлов (если нужны)
+# serve_server_wellknown: true
+
+# Доверенные прокси (Caddy будет на том же хосте, можно указать IP)
+trusted_key_servers:
+  - server_name: "matrix.org"
+
+# Настройки для федерации
+federation_domain_whitelist: ~
+federation_rc_window_size: 1000
+
+# Путь для хранения медиафайлов
+media_store_path: "/data/media_store"
+
+# Максимальный размер загружаемых файлов (50 МБ)
+max_upload_size: 50M
+
+# Отключение устаревших вещей
+listeners:
+  - port: 8008
+    tls: false
+    type: http
+    x_forwarded: true
+    resources:
+      - names: [client, federation]
+        compress: false

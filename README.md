@@ -15,7 +15,7 @@
 ## ⚙️ Настройка перед запуском
 ### 0. Обновление системы, установка зависимостей
 ```bash
-sudo apt update && sudo apt install -y git
+apt update && apt install -y git 
 ```
 ---
 ### 1. Клонируйте репозиторий и перейдите в него
@@ -27,12 +27,34 @@ git clone -v  https://github.com/crazy-alert/Matrix.git .
 ```
 Скопируйте файл примеры конфигурации и отредактируйте его:
 ```bash
-cp .env.example .env &&
+cp example.env .env &&
 nano .env
 ```
+---
+### 2. Настройка
 В редакторе nao сочетания кнопок: `Ctrl+o` - сохранить (после нажать Enter), `Ctrl+x` - закрыть
 
 Это главный конфиг сервера. Обязательно замените:
 server_name – ваш домен (например, `matrix.example.ru`).
+---
+### 3. 🚀 Запуск сервера
+Выполните в каталоге с ```docker-compose.yml```:
 
-Coturn — самая капризная часть. Если звонки не работают, проверьте логи и настройки файрвола (UDP порты 3478, 50000-51000 должны быть открыты). Вариант установки Coturn на хост-машину (вне Docker) часто надежнее.
+```bash
+docker-compose up -d
+```
+Через минуту все контейнеры будут запущены. Проверьте логи:
+```bash
+docker compose logs -f
+```
+---
+#### Coturn — самая капризная часть. Если звонки не работают, проверьте логи и настройки файрвола (UDP порты 3478, 50000-51000 должны быть открыты). Вариант установки Coturn на хост-машину (вне Docker) часто надежнее.
+---
+### 📦 Управление стеком
+* Остановить: ```docker compose down```
+* Запустить: ```docker compose up -d```
+* Перезапустить конкретный сервис: ```docker compose restart tuwunel```
+* Посмотреть логи: ```docker compose logs -f [имя_сервиса]```
+* Остановить, обновить образы, запустить: ```docker compose down && docker compose pull && docker compose up -d```
+* Остановить, обновить образы, запустить: ```docker-compose down && docker-compose pull && docker-compose up -d```
+* Остановить, обновить ропозиторий, запустить: ```docker-compose down && git pull && docker-compose up -d```

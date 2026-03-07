@@ -1,6 +1,6 @@
 services:
   # --- База данных PostgreSQL для Synapse ---
-  synapse_db:
+  db:
     image: docker.io/postgres:14-alpine
     container_name: matrix_postgres
     restart: always
@@ -19,18 +19,25 @@ services:
     image: docker.io/matrixdotorg/synapse:latest
     container_name: matrix_synapse
     restart: always
+    env_file:
+      - .env
     environment:
       - SYNAPSE_CONFIG_PATH=/data/homeserver.yaml
-      # Переменные для первоначальной генерации конфига (если data пуста)
-      - SYNAPSE_SERVER_NAME=${MATRIX_SERVER_NAME}
-      - SYNAPSE_REPORT_STATS=yes
+      - SERVER_NAME=${MATRIX_SERVER_NAME}      # из .env
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD} # из .env
     volumes:
       - ./data:/data
     depends_on:
-      - synapse_db
+      - db
     networks:
       - internal_network
-    # НЕ открываем порты наружу. Все соединения идут через Caddy.
+    command: >
+      sh -c "
+      sed -i 's/example.org/'\"$SERVER_NAME\"'/g' /data/homeserver.yaml &&
+      sed -i 's/<POSTGRES_PASSWORD>/'\"$POSTGRES_PASSWORD\"'/g' /data/homeserver.yaml &&
+      exec python -m synapse.app.homeserver --config-path /data/homeserver.yaml
+      "
+
 
   # --- Админ-панель Synapse-Admin (опционально) ---
   synapse-admin:
