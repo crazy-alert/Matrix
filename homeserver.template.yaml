@@ -1,0 +1,26 @@
+# Шаблон конфигурации Synapse
+server_name: {{SERVER_NAME}}
+pid_file: /homeserver.pid
+listeners:
+  - port: 8008
+    resources:
+      - names: [client, federation]
+    tls: false
+    type: http
+    x_forwarded: true
+database:
+  name: psycopg2
+  args:
+    user: synapse
+    password: {{POSTGRES_PASSWORD}}
+    database: synapse
+    host: synapse_db
+    cp_min: 5
+    cp_max: 10
+log_config: "/data/{{SERVER_NAME}}.log.config"
+media_store_path: /data/media_store
+enable_registration: true
+enable_registration_without_verification: true
+report_stats: true
+trusted_key_servers:
+  - server_name: "matrix.org"
