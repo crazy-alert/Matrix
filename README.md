@@ -24,7 +24,7 @@ apt update && apt install -y git
 mkdir /opt/Matrix &&
 cd /opt/Matrix &&
 git clone -v  https://github.com/crazy-alert/Matrix.git . &&
-chmod +x scripts/configure_synapse.sh
+find scripts -name "*.sh" -exec chmod +x {} \;
 ```
 Скопируйте файл примеры конфигурации и отредактируйте его:
 ```bash
