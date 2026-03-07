@@ -22,8 +22,8 @@ services:
     environment:
       - SYNAPSE_CONFIG_PATH=/data/homeserver.yaml
     volumes:
-      - ./homeserver.yaml:/data/homeserver.yaml:ro   # монтируем готовый конфиг
       - synapse_data:/data   # для логов, медиа и ключей (они будут создаваться)
+      - ./homeserver.yaml:/data/homeserver.yaml:ro   # монтируем готовый конфиг
     depends_on:
       - synapse_db
     networks:
