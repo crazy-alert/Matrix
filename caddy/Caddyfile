@@ -37,8 +37,5 @@
     respond 404
 }
 admin.{$DOMAIN} {
-    tls {
-        issuer internal
-    }
     reverse_proxy synapse-admin:80
 }

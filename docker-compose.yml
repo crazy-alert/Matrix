@@ -49,7 +49,7 @@ services:
       - internal
 
   synapse-admin:
-    image: awesometechnologies/synapse-admin:latest
+    image: awesometechnologies/synapse-admin:0.10.3
     container_name: matrix_admin
     restart: unless-stopped
     environment:
