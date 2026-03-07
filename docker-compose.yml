@@ -52,6 +52,8 @@ services:
     image: awesometechnologies/synapse-admin:latest
     container_name: matrix_admin
     restart: unless-stopped
+    environment:
+      - REACT_APP_SERVER_URL=https://${MATRIX_SERVER_NAME}
     networks:
       - internal
 
