@@ -1,4 +1,4 @@
-# 🚀 Matrix-сервер на Tuwunel с Docker Compose
+# 🚀 Matrix-сервер на Synapse  с Docker Compose
 
 Этот репозиторий содержит готовый Docker‑стек для развёртывания собственного Matrix‑сервера на базе **Tuwunel** (лёгкий сервер на Rust), PostgreSQL, Caddy (автоматический HTTPS) и Unbound (кеширующий DNS). Всё это упаковано в удобный `docker-compose.yml` – достаточно склонировать, поправить конфиги и запустить.
 ---
@@ -9,7 +9,10 @@
 - Доменное имя, направленное на IP вашего сервера. Понадобятся два поддомена:
     - `matrix.ваш-домен.ru` – для сервера Matrix
     - (опционально) `element.ваш-домен.ru` – если позже захотите поставить веб‑клиент Element
-- Открытые порты в фаерволе: **80**, **443**, **8448** (TCP).
+- Открытые порты в фаерволе:
+    - **80/tcp**, **443/tcp** – для веб-интерфейса и клиентов
+    - **3478/udp** и **49160-49200/udp** – для TURN-сервера (звонки)
+    - (опционально) **8448/tcp** – для федерации, если вы не используете делегирование через .well-known
 
 ---
 ## ⚙️ Настройка перед запуском
@@ -27,23 +30,31 @@ git clone -v  https://github.com/crazy-alert/Matrix.git .
 ```
 ---
 ### 2. Настройка
-В редакторе nao сочетания кнопок: `Ctrl+o` - сохранить (после нажать Enter), `Ctrl+x` - закрыть
-
-Скопируйте файл примеры конфигурации и отредактируйте его:
-Чтобы узнать COTURN_INTERNAL_IP (внутренний IP вашего сервера), выполните на сервере одну из этих команд:
-
-```bash
-hostname -I | awk '{print $1}'
-```
-Это главный конфиг сервера. Обязательно замените:
-server_name – ваш домен (например, `matrix.example.ru`).
-
+Выполните следующую команду, она скопирует файл примера конфигурации в `.env` и откроет его для редактирования в редакторе `nano`.
+В редакторе `nano` сочетания кнопок: `Ctrl+o` - сохранить (после нажать Enter), `Ctrl+x` - закрыть
+`.env` это главный конфиг сервера. Обязательно замените:
+ - DOMAIN=example.org – ваш домен (вместо `example.org` подставьте ваш домен).
+ - MATRIX_SERVER_NAME=matrix.example.org – это прямой адрес вашего сервера Synapse (обычно используется поддомен 'matrix').
+ - COTURN_EXTERNAL_IP=ваш_публичный_айпи - подставьте внешний ip сервера (можно узнать командой `hostname -I | awk '{print $1}'`)
+ - COTURN_INTERNAL_IP=ваш_внутренний_айпи - внутренний ip внутри сети, обычно совпадает с внешним
+Команда
 ```bash
 cp example.env .env &&
-cp element-config.json.template element-config.json &&
 nano .env
 ```
-Создайте конфиг matrix
+🔧 Автоматическая генерация конфигурации (`generate_config.sh`)
+Скрипт `generate_config.sh` создаёт финальные файлы конфигурации на основе шаблонов и переменных из `.env`. 
+
+Что он делает:
+- Проверяет наличие файла `.env` и загружает переменные.
+- Генерирует случайные секреты (`macaroon`, `registration shared secret`, `form secret`), если они не заданы, и дописывает их в `.env`.
+- Создаёт `homeserver.yaml` из шаблона `template.yaml`, подставляя имя сервера и пароль `PostgreSQL`.
+- Создаёт `element-config.json` из шаблона `element-config.json.template` для веб-клиента Element.
+- Устанавливает права доступа 644, чтобы контейнеры могли читать файлы.
+
+Запускайте этот скрипт после настройки .env и перед первым запуском Docker-стека.
+
+Команда для запуска:
 ```bash
 chmod +x generate_config.sh && ./generate_config.sh
 ```
@@ -58,26 +69,33 @@ docker-compose up -d
 ```bash
 docker compose logs -f
 ```
----
+------
 
-### Создать пользователя:
+### Создание пользователей:
 - Вас попросят ввести:
   - имя пользователя (без домена, например friend)
   - пароль
   - подтверждение пароля
   - сделать ли администратором (ответьте yes или no)
 ```bash
-docker exec -it matrix_synapse_1 register_new_matrix_user -c /data/homeserver.yaml http://localhost:8008
+docker-compose exec synapse register_new_matrix_user -c /data/homeserver.yaml http://localhost:8008
 ```
-docker run -it --rm -v matrix_synapse_data:/data alpine chown -R 991:991 /data
+### Просмотр пользователей:
+```bash
+docker-compose exec synapse_db psql -U synapse -d synapse -c "SELECT name FROM users;"
+```
+
+(Все эти операции доступны через web при установленном `synapse-admin`, если Вы ничего не меняли)
+
 
 ---
 #### Coturn — самая капризная часть. Если звонки не работают, проверьте логи и настройки файрвола (UDP порты 3478, 50000-51000 должны быть открыты). Вариант установки Coturn на хост-машину (вне Docker) часто надежнее.
 
 Добавить правила:
 ```bash
-ufw allow 3478/udp &&
-ufw allow 50000:51000/udp
+ufw allow 3478/udp
+ufw allow 49160:49200/udp
+ufw reload
 ```
 Убедитесь, что правила добавлены:
 ```bash
@@ -107,11 +125,71 @@ Status: active
 Посмотреть пользователей:
 
 ```bash
-docker exec -it matrix_synapse_db_1 psql -U synapse -d synapse -c "SELECT name FROM users;"
+docker exec -it synapse_db psql -U synapse -d synapse -c "SELECT name FROM users;"
 ```
 
 Чтобы установить (сменить) пароль для существующего пользователя в Synapse, выполните команду:
 ```bash
-docker exec -it matrix_synapse_1 register_new_matrix_user -c /data/homeserver.yaml -u ИМЯ_ПОЛЬЗОВАТЕЛЯ -p НОВЫЙ_ПАРОЛЬ http://localhost:8008
+docker exec -it synapse register_new_matrix_user -c /data/homeserver.yaml -u ИМЯ_ПОЛЬЗОВАТЕЛЯ -p НОВЫЙ_ПАРОЛЬ http://localhost:8008
 ```
+______
+# Адреса:
+ - https://admin.вашсервер.com - панель synapse-admin
+ - https://element.вашсервер.com - клиент Element web (это как web.whatsapp.com или web.telegram.org)
+ - https://federationtester.matrix.org/?server_name=вашсервер.com - можете проферить федерацию
+ - https://matrix.вашсервер.com - должен переадресовать вас на matrix.вашсервер.com_matrix/static/ на страницу Synapse
+ - 
+_____
+#        Готово! Но одно но:
+Сейчас любой желающий может зарегестрироваться на вашем сервере (в клиентах или через element-web).
+---
+Управление регистрацией в Synapse задаётся в файле homeserver.yaml. Сейчас у вас включены параметры:
+```yaml
+enable_registration: true
+enable_registration_without_verification: true
+```
+Это означает, что любой желающий может зарегистрироваться (даже без подтверждения email).
+---
+## 🔧 Варианты ограничения регистрации:
+1. Полное закрытие регистрации (только ручное создание пользователей)
+   Самый простой способ – отключить регистрацию совсем. Тогда новые учётные записи смогут создавать только администраторы через команду `register_new_matrix_user` или через API с использованием `registration_shared_secret` (он у вас уже есть).
+   В homeserver.yaml измените:
+    ```yaml
+    enable_registration: false
+    # enable_registration_without_verification можно удалить или закомментировать
+    ```
+   Сохраните файл и перезапустите Synapse:
+   ```bash
+   docker-compose restart synapse
+    ```
+   После этого кнопка регистрации в Element Web исчезнет, и попытка зарегистрироваться через клиент будет отклонена.
+2. Регистрация только по приглашениям (с токенами)
+   Если вы хотите, чтобы пользователи могли регистрироваться самостоятельно, но только по специальным ссылкам-приглашениям, включите регистрацию по токенам.
+   - Настройка:
+     - Установите `enable_registration`: true (оставьте как есть).
+     - Добавьте параметр:
+     ```yaml
+     registration_requires_token: true
+     ```
+     - Создайте токены приглашений. Это можно сделать через API или утилиту `register_new_matrix_user` с опцией `--token`. Например, войдите в контейнер `synapse` и выполните:
+    ```bash
+    docker-compose exec synapse register_new_matrix_user --token=TOKEN_ДЛЯ_ПРИГЛАШЕНИЯ -c /data/homeserver.yaml https://localhost:8008
+    ```
+   (можно не указывать пользователя, утилита спросит его отдельно)
+    - Либо используйте клиентский API для массового создания токенов.
+      После включения `registration_requires_token` при регистрации нужно будет ввести токен (обычно это поле появляется в клиенте).
+3. Ограничение по доменам email (если используется email)
+   Если вы планируете подтверждать email и хотите разрешить регистрацию только с определёнными адресами, можно настроить:
+    ```yaml
+    enable_registration: true
+    enable_registration_without_verification: false  # требовать подтверждения email
+    registrations_require_3pid:
+      - email
+    allowed_local_3pids:
+      - medium: email
+    pattern: "^.*@ваш-домен\\.ru$"   # регулярка для разрешённых доменов
+    ```
+   Не забудьте настроить email-отправку (параметры email в конфиге) – иначе подтверждение работать не будет.
+
+
 
