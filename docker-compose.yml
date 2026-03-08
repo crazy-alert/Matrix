@@ -81,6 +81,15 @@ services:
         envsubst < /etc/coturn/turnserver.conf.template > /etc/coturn/turnserver.conf &&
         exec turnserver -c /etc/coturn/turnserver.conf
 
+  element-web:
+    image: vectorim/element-web:latest
+    container_name: matrix_element
+    restart: unless-stopped
+    volumes:
+      - ./element-config.json:/app/config.json:ro
+    networks:
+      - internal
+
 volumes:
   caddy_data:
   caddy_config:

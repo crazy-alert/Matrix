@@ -40,6 +40,7 @@ server_name – ваш домен (например, `matrix.example.ru`).
 
 ```bash
 cp example.env .env &&
+cp element-config.json.template element-config.json &&
 nano .env
 ```
 Создайте конфиг matrix

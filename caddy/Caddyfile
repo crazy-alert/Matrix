@@ -39,3 +39,6 @@
 admin.{$DOMAIN} {
     reverse_proxy synapse-admin:80
 }
+element.{$DOMAIN} {
+    reverse_proxy element-web:80
+}
