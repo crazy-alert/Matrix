@@ -54,22 +54,17 @@ fi
 # Пути
 TEMPLATE="template.yaml"
 OUTPUT="homeserver.yaml"
-
 if [ ! -f "$TEMPLATE" ]; then
     echo -e "${RED}❌ Шаблон $TEMPLATE не найден!${NC}"
     exit 1
 fi
-
 # Копируем шаблон
 cp "$TEMPLATE" "$OUTPUT"
-
 # Заменяем плейсхолдеры
 sed -i "s/__SERVER_NAME__/${SERVER_NAME}/g" "$OUTPUT"
 sed -i "s/__POSTGRES_PASSWORD__/${POSTGRES_PASSWORD}/g" "$OUTPUT"
-
 # Удаляем log_config, если он есть (чтобы логи шли в stdout)
 sed -i '/log_config:/d' "$OUTPUT"
-
 # Добавляем секреты, если их нет в файле
 if ! grep -q "macaroon_secret_key" "$OUTPUT"; then
     echo "macaroon_secret_key: ${MACAROON_SECRET_KEY}" >> "$OUTPUT"
@@ -80,10 +75,26 @@ fi
 if ! grep -q "form_secret" "$OUTPUT"; then
     echo "form_secret: ${FORM_SECRET}" >> "$OUTPUT"
 fi
-
 # Устанавливаем права 644, чтобы контейнер (пользователь 991) мог читать
 chmod 644 "$OUTPUT"
-
 echo -e "${GREEN}✅ Файл $OUTPUT успешно создан с правами 644${NC}"
-echo -e "${GREEN}📄 Первые 20 строк:${NC}"
-head -20 "$OUTPUT"
+
+
+
+# Element WEB
+# Пути
+echo -e "${GREEN}🔧 Генерация lement-config.json из шаблона...${NC}"
+TEMPLATE="element-config.json.template"
+OUTPUT="element-config.json"
+if [ ! -f "$TEMPLATE" ]; then
+    echo -e "${RED}❌ Шаблон $TEMPLATE не найден!${NC}"
+    exit 1
+fi
+# Копируем шаблон
+cp "$TEMPLATE" "$OUTPUT"
+# Заменяем плейсхолдеры
+sed -i "s/__SERVER_NAME__/${SERVER_NAME}/g" "$OUTPUT"
+sed -i "s/__MATRIX_SERVER_NAME__/${MATRIX_SERVER_NAME}/g" "$OUTPUT"
+# Устанавливаем права 644, чтобы контейнер (пользователь 991) мог читать
+chmod 644 "$OUTPUT"
+echo -e "${GREEN}✅ Файл $OUTPUT успешно создан с правами 644${NC}"

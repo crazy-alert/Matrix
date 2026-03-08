@@ -1,28 +1,6 @@
 {$MATRIX_DOMAIN} {
-                 reverse_proxy synapse:8008
-
-                 header {
-                        Access-Control-Allow-Origin *
-                        Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
-                        Access-Control-Allow-Headers "Origin, X-Requested-With, Content-Type, Accept, Authorization"
-                        Access-Control-Allow-Credentials true
-                        }
-
-                 @options {
-                          method OPTIONS
-                          }
-                 handle @options {
-                                 header {
-                                        Access-Control-Allow-Origin *
-                                        Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
-                                        Access-Control-Allow-Headers "Origin, X-Requested-With, Content-Type, Accept, Authorization"
-                                        Access-Control-Allow-Credentials true
-                                        Access-Control-Max-Age 86400
-                                        }
-                                 respond 204
-                                 }
-}
-
+    reverse_proxy synapse:8008
+ }
 {$DOMAIN} {
     handle /.well-known/matrix/server {
         header Content-Type application/json
@@ -36,6 +14,9 @@
     }
     respond 404
 }
-element.{$DOMAIN} {
+ admin.{$DOMAIN} {
+    reverse_proxy synapse-admin:80
+ }
+ element.{$DOMAIN} {
     reverse_proxy element-web:80
 }
