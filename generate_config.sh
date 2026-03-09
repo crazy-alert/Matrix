@@ -3,69 +3,101 @@ set -e
 
 # Цвета
 GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m'
 
-echo -e "${GREEN}🔧 Генерация homeserver.yaml из шаблона...${NC}"
+# Функции вывода (дублируются на случай запуска отдельно)
+info()  { echo -e "${GREEN}[INFO]${NC} $1"; }
+warn()  { echo -e "${YELLOW}[WARN]${NC} $1"; }
+error() { echo -e "${RED}[ERROR]${NC} $1"; exit 1; }
 
-# Проверяем .env
+# Генератор пароля
+generate_password() {
+    tr -dc 'a-zA-Z0-9!@#$%^&*()_+' < /dev/urandom 2>/dev/null | fold -w 32 | head -n1 || openssl rand -base64 32
+}
+
+# Генерация/проверка пароля PostgreSQL
+setup_postgres_password() {
+    local env_file="$1"
+    if ! grep -q '^POSTGRES_PASSWORD=' "$env_file"; then
+        NEW_PASS=$(generate_password)
+        echo "POSTGRES_PASSWORD=$NEW_PASS" >> "$env_file"
+        info "Сгенерирован новый пароль PostgreSQL и добавлен в .env"
+    else
+        CURRENT_PASS=$(grep '^POSTGRES_PASSWORD=' "$env_file" | cut -d'=' -f2-)
+        if [ "$CURRENT_PASS" = "changeme" ]; then
+            NEW_PASS=$(generate_password)
+            sed -i "s/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=$NEW_PASS/" "$env_file"
+            info "Пароль PostgreSQL изменён с 'changeme' на случайный"
+        else
+            info "Пароль PostgreSQL уже задан в .env"
+        fi
+    fi
+}
+
+# ----------------------------------------------------------------------
+# Основная часть
+# ----------------------------------------------------------------------
+
+# Проверяем наличие .env
 if [ ! -f .env ]; then
-    echo -e "${RED}❌ Файл .env не найден!${NC}"
-    exit 1
+    error "Файл .env не найден!"
 fi
 
-# Загружаем переменные окружения из .env
+# Генерируем пароль БД (если требуется) до загрузки переменных
+setup_postgres_password ".env"
+
+# Загружаем переменные
 set -a
 source .env
 set +a
 
 # Проверяем обязательные переменные
 if [ -z "$DOMAIN" ]; then
-    echo -e "${RED}❌ DOMAIN не задан в .env${NC}"
-    exit 1
+    error "DOMAIN не задан в .env"
 fi
 if [ -z "$POSTGRES_PASSWORD" ]; then
-    echo -e "${RED}❌ POSTGRES_PASSWORD не задан в .env${NC}"
-    exit 1
+    error "POSTGRES_PASSWORD не задан в .env"
 fi
 
 # Определяем имя сервера
 SERVER_NAME="${MATRIX_SERVER_NAME:-$DOMAIN}"
 
-# Генерация секретов, если они не заданы в .env
+# Генерация секретов, если отсутствуют
 if [ -z "$MACAROON_SECRET_KEY" ]; then
-    MACAROON_SECRET_KEY=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
+    MACAROON_SECRET_KEY=$(tr -dc 'a-zA-Z0-9' < /dev/urandom | fold -w 32 | head -n1)
     echo "MACAROON_SECRET_KEY=${MACAROON_SECRET_KEY}" >> .env
-    echo -e "${GREEN}✨ Сгенерирован MACAROON_SECRET_KEY и добавлен в .env${NC}"
+    info "Сгенерирован MACAROON_SECRET_KEY и добавлен в .env"
 fi
 
 if [ -z "$REGISTRATION_SHARED_SECRET" ]; then
-    REGISTRATION_SHARED_SECRET=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
+    REGISTRATION_SHARED_SECRET=$(tr -dc 'a-zA-Z0-9' < /dev/urandom | fold -w 32 | head -n1)
     echo "REGISTRATION_SHARED_SECRET=${REGISTRATION_SHARED_SECRET}" >> .env
-    echo -e "${GREEN}✨ Сгенерирован REGISTRATION_SHARED_SECRET и добавлен в .env${NC}"
+    info "Сгенерирован REGISTRATION_SHARED_SECRET и добавлен в .env"
 fi
 
 if [ -z "$FORM_SECRET" ]; then
-    FORM_SECRET=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
+    FORM_SECRET=$(tr -dc 'a-zA-Z0-9' < /dev/urandom | fold -w 32 | head -n1)
     echo "FORM_SECRET=${FORM_SECRET}" >> .env
-    echo -e "${GREEN}✨ Сгенерирован FORM_SECRET и добавлен в .env${NC}"
+    info "Сгенерирован FORM_SECRET и добавлен в .env"
 fi
 
-# Пути
+# ----------------------------------------------------------------------
+# Генерация homeserver.yaml
+# ----------------------------------------------------------------------
 TEMPLATE="template.yaml"
 OUTPUT="homeserver.yaml"
 if [ ! -f "$TEMPLATE" ]; then
-    echo -e "${RED}❌ Шаблон $TEMPLATE не найден!${NC}"
-    exit 1
+    error "Шаблон $TEMPLATE не найден!"
 fi
-# Копируем шаблон
+
 cp "$TEMPLATE" "$OUTPUT"
-# Заменяем плейсхолдеры
 sed -i "s/__SERVER_NAME__/${SERVER_NAME}/g" "$OUTPUT"
 sed -i "s/__POSTGRES_PASSWORD__/${POSTGRES_PASSWORD}/g" "$OUTPUT"
-# Удаляем log_config, если он есть (чтобы логи шли в stdout)
 sed -i '/log_config:/d' "$OUTPUT"
-# Добавляем секреты, если их нет в файле
+
+# Добавляем секреты, если их нет
 if ! grep -q "macaroon_secret_key" "$OUTPUT"; then
     echo "macaroon_secret_key: ${MACAROON_SECRET_KEY}" >> "$OUTPUT"
 fi
@@ -75,26 +107,24 @@ fi
 if ! grep -q "form_secret" "$OUTPUT"; then
     echo "form_secret: ${FORM_SECRET}" >> "$OUTPUT"
 fi
-# Устанавливаем права 644, чтобы контейнер (пользователь 991) мог читать
+
 chmod 644 "$OUTPUT"
-echo -e "${GREEN}✅ Файл $OUTPUT успешно создан с правами 644${NC}"
+info "Файл $OUTPUT успешно создан с правами 644"
 
-
-
-# Element WEB
-# Пути
-echo -e "${GREEN}🔧 Генерация lement-config.json из шаблона...${NC}"
+# ----------------------------------------------------------------------
+# Генерация element-config.json
+# ----------------------------------------------------------------------
 TEMPLATE="element-config.json.template"
 OUTPUT="element-config.json"
 if [ ! -f "$TEMPLATE" ]; then
-    echo -e "${RED}❌ Шаблон $TEMPLATE не найден!${NC}"
-    exit 1
+    error "Шаблон $TEMPLATE не найден!"
 fi
-# Копируем шаблон
+
 cp "$TEMPLATE" "$OUTPUT"
-# Заменяем плейсхолдеры
 sed -i "s/__SERVER_NAME__/${SERVER_NAME}/g" "$OUTPUT"
 sed -i "s/__MATRIX_SERVER_NAME__/${MATRIX_SERVER_NAME}/g" "$OUTPUT"
-# Устанавливаем права 644, чтобы контейнер (пользователь 991) мог читать
+
 chmod 644 "$OUTPUT"
-echo -e "${GREEN}✅ Файл $OUTPUT успешно создан с правами 644${NC}"
+info "Файл $OUTPUT успешно создан с правами 644"
+
+echo -e "${GREEN}✅ Генерация конфигурации завершена.${NC}"
