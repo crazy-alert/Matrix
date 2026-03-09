@@ -1,9 +1,10 @@
 #!/bin/bash
 set -e
 
+#15_44_9-3
 # Цвета
 GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
+YELLOW='033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m'
 
@@ -65,23 +66,59 @@ main() {
     INSTALL_DIR="${INSTALL_DIR:-$DEFAULT_INSTALL_DIR}"
     info "Директория установки: $INSTALL_DIR"
 
-    # 2. Обновление системы и установка необходимых пакетов
+    # 2. Обновление системы и установка базовых пакетов
     info "Обновление списка пакетов и установка git, curl, dnsutils..."
     apt update && apt install -y git curl dnsutils
 
-    # 3. Проверка Docker и Docker Compose
-    info "Проверка Docker и Docker Compose..."
-    check_command docker
-    if command -v docker-compose &> /dev/null; then
-        COMPOSE_CMD="docker-compose"
-    elif docker compose version &> /dev/null; then
+    # 3. Установка Docker (если не установлен)
+    if ! command -v docker &> /dev/null; then
+        info "Docker не найден. Устанавливаем Docker..."
+
+        # Устанавливаем зависимости для добавления репозитория
+        apt install -y ca-certificates curl
+
+        # Создаём директорию для ключей (если нет)
+        install -m 0755 -d /etc/apt/keyrings
+
+        # Скачиваем GPG-ключ Docker
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+        chmod a+r /etc/apt/keyrings/docker.asc
+
+        # Определяем дистрибутив (ubuntu/debian)
+        source /etc/os-release
+        if [[ "$ID" == "ubuntu" ]]; then
+            DISTRO="ubuntu"
+        elif [[ "$ID" == "debian" ]]; then
+            DISTRO="debian"
+        else
+            error "Неподдерживаемый дистрибутив: $ID"
+        fi
+
+        # Добавляем репозиторий Docker
+        echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/$DISTRO ${VERSION_CODENAME} stable" | \
+            tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+        # Обновляем список пакетов и устанавливаем Docker
+        apt update
+        apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+        info "Docker успешно установлен."
+    else
+        info "Docker уже установлен, пропускаем установку."
+    fi
+
+    # 4. Определяем команду Docker Compose
+    info "Проверка Docker Compose..."
+    if docker compose version &> /dev/null; then
         COMPOSE_CMD="docker compose"
+    elif command -v docker-compose &> /dev/null; then
+        COMPOSE_CMD="docker-compose"
     else
         error "Docker Compose не найден. Установите docker-compose или docker compose."
     fi
     info "Используется команда: $COMPOSE_CMD"
 
-    # 4. Подготовка директории и клонирование репозитория
+    # 5. Подготовка директории и клонирование репозитория
     if [ -d "$INSTALL_DIR" ]; then
         warn "Директория $INSTALL_DIR уже существует."
         read -p "Продолжить и перезаписать файлы? (y/N): " CONFIRM
@@ -95,7 +132,7 @@ main() {
     info "Клонирование репозитория..."
     git clone -v "$REPO_URL" .
 
-    # 5. Запрос домена и проверка DNS
+    # 6. Запрос домена и проверка DNS
     read -p "Введите ваш домен (например, example.org): " DOMAIN
     [ -z "$DOMAIN" ] && error "Домен не может быть пустым."
 
@@ -125,14 +162,14 @@ main() {
     info "Проверка DNS для matrix.$DOMAIN..."
     check_dns "matrix.$DOMAIN"
 
-    # 6. Создание .env из примера
+    # 7. Создание .env из примера
     if [ ! -f "example.env" ]; then
         error "Файл example.env не найден в репозитории."
     fi
     cp example.env .env
     info "Файл .env создан."
 
-    # 7. Замена переменных в .env
+    # 8. Замена переменных в .env
     MATRIX_SERVER_NAME="matrix.$DOMAIN"
     COTURN_EXTERNAL_IP="$EXTERNAL_IP"
     COTURN_INTERNAL_IP="$EXTERNAL_IP"
@@ -143,7 +180,7 @@ main() {
     sed -i "s/^COTURN_INTERNAL_IP=.*/COTURN_INTERNAL_IP=$COTURN_INTERNAL_IP/" .env
     info "Переменные в .env обновлены."
 
-    # 8. Запуск генератора конфигурации
+    # 9. Запуск генератора конфигурации
     if [ ! -f "generate_config.sh" ]; then
         error "Скрипт generate_config.sh не найден."
     fi
@@ -154,17 +191,17 @@ main() {
     fi
     info "generate_config.sh выполнен успешно."
 
-    # 9. Настройка UFW (опционально)
+    # 10. Настройка UFW (опционально)
     configure_ufw
 
-    # 10. Запуск Docker-стека
+    # 11. Запуск Docker-стека
     info "Запуск контейнеров с помощью $COMPOSE_CMD..."
     $COMPOSE_CMD up -d
 
-    # 11. Проверка статуса контейнеров
+    # 12. Проверка статуса контейнеров
     check_containers "$COMPOSE_CMD"
 
-    # 12. Финальное сообщение
+    # 13. Финальное сообщение
     echo -e "${GREEN}"
     cat << EOF
 ✅ Установка завершена!
