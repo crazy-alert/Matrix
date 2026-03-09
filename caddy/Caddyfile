@@ -3,51 +3,35 @@
                  }
 
 {$DOMAIN} {
-            # .well-known для делегирования
-            handle /.well-known/matrix/server {
-                                              header Content-Type application/json
-                                              header Access-Control-Allow-Origin *
-                                              respond `{"m.server": "{$DOMAIN}:443"}`
-                                              }
-            handle /.well-known/matrix/client {
-                                              header Content-Type application/json
-                                              header Access-Control-Allow-Origin *
-                                              respond `{"m.homeserver": {"base_url": "https://{$DOMAIN}"}}`
-                                              }
+        # .well-known для делегирования
+        handle /.well-known/matrix/server {
+                                          header Content-Type application/json
+                                          header Access-Control-Allow-Origin *
+                                          respond `{"m.server": "{$DOMAIN}:443"}`
+                                          }
+        handle /.well-known/matrix/client {
+                                          header Content-Type application/json
+                                          header Access-Control-Allow-Origin *
+                                          respond `{"m.homeserver": {"base_url": "https://{$DOMAIN}"}}`
+                                          }
 
-            # Админские API Synapse (с правильными CORS-заголовками) для работы  element-web:80
-            handle /_synapse/admin/* {
-                                        header Access-Control-Allow-Origin "https://admin.{$DOMAIN}"
-                                        header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
-                                        header Access-Control-Allow-Headers "Authorization, Content-Type"
-                                        header Access-Control-Allow-Credentials "true"
+        # Админские API Synapse (с правильными CORS-заголовками)
+        handle /_synapse/admin/* {
+                                reverse_proxy synapse:8008
+                                }
+        # Все остальные Matrix-запросы (клиентские, федерация)
+        handle /_matrix/* {
+                          reverse_proxy synapse:8008
+                          }
 
-                                        # Обработка preflight-запросов (OPTIONS)
-                                        @options {
-                                                 method OPTIONS
-                                                 }
-                                         handle @options {
-                                                         respond 204
-                                                         }
+        # Всё остальное — 404
+        respond 404
+        }
 
-                                         reverse_proxy synapse:8008
-                                         }
+admin.{$DOMAIN} {
+             reverse_proxy synapse-admin:80
+             }
 
-            # Все остальные Matrix-запросы (клиентские, федерация)
-            handle /_matrix/* {
-                              reverse_proxy synapse:8008
-                              }
-
-            # Всё остальное — 404
-            respond 404
-            }
-
-# перенаправляем в контейнер synapse-admin:80
- admin.{$DOMAIN} {
-                 reverse_proxy synapse-admin:80
-                 }
-
-# перенаправляем в контейнер element-web:80
- element.{$DOMAIN} {
-                   reverse_proxy element-web:80
-                   }
+element.{$DOMAIN} {
+               reverse_proxy element-web:80
+               }
