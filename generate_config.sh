@@ -64,6 +64,10 @@ fi
 # Определяем имя сервера
 SERVER_NAME="${MATRIX_SERVER_NAME:-$DOMAIN}"
 
+info " $DOMAIN : $DOMAIN"
+info " SERVER_NAME : $SERVER_NAME"
+info " MATRIX_SERVER_NAME : $MATRIX_SERVER_NAME"
+
 # Генерация секретов, если отсутствуют
 if [ -z "$MACAROON_SECRET_KEY" ]; then
     MACAROON_SECRET_KEY=$(tr -dc 'a-zA-Z0-9' < /dev/urandom | fold -w 32 | head -n1)
