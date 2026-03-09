@@ -2,7 +2,7 @@
 
 Для ЛЛ в репозитарий добавлен установщик, вы можете развернуть Matrix сервер одной командой:
 ```bash
-bash <(curl -sSL https://raw.githubusercontent.com/crazy-alert/Matrix/refs/heads/main/installer.sh)
+bash <(curl -sSL https://raw.githubusercontent.com/crazy-alert/Matrix/refs/heads/main/installer.sh?timestamp=123)
 ```
 ______
 ______
