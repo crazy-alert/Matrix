@@ -1,22 +1,53 @@
 {$MATRIX_DOMAIN} {
-    reverse_proxy synapse:8008
- }
+                 reverse_proxy synapse:8008
+                 }
+
 {$DOMAIN} {
-    handle /.well-known/matrix/server {
-        header Content-Type application/json
-        header Access-Control-Allow-Origin *
-        respond `{"m.server": "{$MATRIX_DOMAIN}:443"}`
-    }
-    handle /.well-known/matrix/client {
-        header Content-Type application/json
-        header Access-Control-Allow-Origin *
-        respond `{"m.homeserver": {"base_url": "https://{$MATRIX_DOMAIN}"}}`
-    }
-    respond 404
-}
+            # .well-known для делегирования
+            handle /.well-known/matrix/server {
+                                              header Content-Type application/json
+                                              header Access-Control-Allow-Origin *
+                                              respond `{"m.server": "{$DOMAIN}:443"}`
+                                              }
+            handle /.well-known/matrix/client {
+                                              header Content-Type application/json
+                                              header Access-Control-Allow-Origin *
+                                              respond `{"m.homeserver": {"base_url": "https://{$DOMAIN}"}}`
+                                              }
+
+            # Админские API Synapse (с правильными CORS-заголовками) для работы  element-web:80
+            handle /_synapse/admin/* {
+                                        header Access-Control-Allow-Origin "https://admin.{$DOMAIN}"
+                                        header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+                                        header Access-Control-Allow-Headers "Authorization, Content-Type"
+                                        header Access-Control-Allow-Credentials "true"
+
+                                        # Обработка preflight-запросов (OPTIONS)
+                                        @options {
+                                                 method OPTIONS
+                                                 }
+                                         handle @options {
+                                                         respond 204
+                                                         }
+
+                                         reverse_proxy synapse:8008
+                                         }
+
+            # Все остальные Matrix-запросы (клиентские, федерация)
+            handle /_matrix/* {
+                              reverse_proxy synapse:8008
+                              }
+
+            # Всё остальное — 404
+            respond 404
+            }
+
+# перенаправляем в контейнер synapse-admin:80
  admin.{$DOMAIN} {
-    reverse_proxy synapse-admin:80
- }
+                 reverse_proxy synapse-admin:80
+                 }
+
+# перенаправляем в контейнер element-web:80
  element.{$DOMAIN} {
-    reverse_proxy element-web:80
-}
+                   reverse_proxy element-web:80
+                   }

@@ -70,7 +70,7 @@ if [ ! -f "$TEMPLATE" ]; then
 fi
 
 cp "$TEMPLATE" "$OUTPUT"
-sed -i "s/__SERVER_NAME__/${SERVER_NAME}/g" "$OUTPUT"
+sed -i "s/__SERVER_NAME__/${DOMAIN}/g" "$OUTPUT"
 sed -i "s/__POSTGRES_PASSWORD__/${POSTGRES_PASSWORD}/g" "$OUTPUT"
 sed -i '/log_config:/d' "$OUTPUT"
 
@@ -99,7 +99,7 @@ fi
 
 cp "$TEMPLATE" "$OUTPUT"
 sed -i "s/__SERVER_NAME__/${SERVER_NAME}/g" "$OUTPUT"
-sed -i "s/__MATRIX_SERVER_NAME__/${MATRIX_SERVER_NAME}/g" "$OUTPUT"
+sed -i "s/__MATRIX_SERVER_NAME__/${DOMAIN}/g" "$OUTPUT"
 
 chmod 644 "$OUTPUT"
 info "Файл $OUTPUT успешно создан с правами 644"

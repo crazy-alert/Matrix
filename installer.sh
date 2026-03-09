@@ -159,7 +159,7 @@ main() {
     info "Проверка DNS для основного домена..."
     check_dns "$DOMAIN"
     info "Проверка DNS для matrix.$DOMAIN..."
-    info "Если завершится с ошибкой - вам нужно добавить A - запись для matrix.$DOMAIN или *.$DOMAIN "
+    info "Если завершится с ошибкой - вам нужно добавить A - запись для  *.$DOMAIN , подомены нужны будут и для работы админки и Element-web "
     check_dns "matrix.$DOMAIN"
 
     # 7. Создание .env из примера
@@ -218,10 +218,10 @@ main() {
 - Сервер Synapse: https://$MATRIX_SERVER_NAME
 - Веб-клиент Element: https://element.$DOMAIN (если настроен)
 - Админ-панель: https://admin.$DOMAIN
+
 Проверка:
 - https://$MATRIX_SERVER_NAME - должен переадресовать вас на $DOMAIN/_matrix/static/ на страницу Synapse
 - Проверить федерацию вывод можете здесь: https://federationtester.matrix.org
-
 
 Создать первого пользователя:
   $COMPOSE_CMD exec synapse register_new_matrix_user -c /data/homeserver.yaml http://localhost:8008
@@ -230,6 +230,8 @@ main() {
   $COMPOSE_CMD logs -f
 
 Управление регистрацией описано в README.
+
+Вы можете самостоятельно внести изменения в .env файл (команда nano .env), после вызвать generate_config.sh (предварительно остановив и после запустив docker)
 EOF
     echo -e "${NC}"
 }
