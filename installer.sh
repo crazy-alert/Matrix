@@ -160,6 +160,7 @@ main() {
     info "Проверка DNS для основного домена..."
     check_dns "$DOMAIN"
     info "Проверка DNS для matrix.$DOMAIN..."
+    info "Если завершится с ошибкой - вам нужно добавить A - запись для matrix.$DOMAIN или *.$DOMAIN "
     check_dns "matrix.$DOMAIN"
 
     # 7. Создание .env из примера
