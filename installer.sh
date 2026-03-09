@@ -1,7 +1,6 @@
 #!/bin/bash
 set -e
 
-#15_44_9-3
 # Цвета
 GREEN='\033[0;32m'
 YELLOW='033[1;33m'
@@ -170,21 +169,29 @@ main() {
     cp example.env .env
     info "Файл .env создан."
 
+    # Генератор пароля
+    generate_password() {
+        tr -dc 'a-zA-Z0-9!@#$%^&*()_+' < /dev/urandom 2>/dev/null | fold -w 32 | head -n1 || openssl rand -base64 32
+    }
+
     # 8. Замена переменных в .env
     MATRIX_SERVER_NAME="matrix.$DOMAIN"
     COTURN_EXTERNAL_IP="$EXTERNAL_IP"
     COTURN_INTERNAL_IP="$EXTERNAL_IP"
+    POSTGRES_PASSWORD=$(generate_password)
 
     sed -i "s/^DOMAIN=.*/DOMAIN=$DOMAIN/" .env
     sed -i "s/^MATRIX_SERVER_NAME=.*/MATRIX_SERVER_NAME=$MATRIX_SERVER_NAME/" .env
     sed -i "s/^COTURN_EXTERNAL_IP=.*/COTURN_EXTERNAL_IP=$COTURN_EXTERNAL_IP/" .env
     sed -i "s/^COTURN_INTERNAL_IP=.*/COTURN_INTERNAL_IP=$COTURN_INTERNAL_IP/" .env
+    sed -i "s/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=$POSTGRES_PASSWORD/" .env
     info "Переменные в .env обновлены."
 
     # 9. Запуск генератора конфигурации
     if [ ! -f "generate_config.sh" ]; then
         error "Скрипт generate_config.sh не найден."
     fi
+    info "Настройка выполнения generate_config.sh..."
     chmod +x generate_config.sh
     info "Запуск generate_config.sh..."
     if ! ./generate_config.sh; then
@@ -211,8 +218,10 @@ main() {
 - Сервер Synapse: https://$MATRIX_SERVER_NAME
 - Веб-клиент Element: https://element.$DOMAIN (если настроен)
 - Админ-панель: https://admin.$DOMAIN
+Проверка:
+- https://$MATRIX_SERVER_NAME - должен переадресовать вас на $DOMAIN/_matrix/static/ на страницу Synapse
+- Проверить федерацию вывод можете здесь: https://federationtester.matrix.org
 
-Пароль PostgreSQL сохранён в файле .env (переменная POSTGRES_PASSWORD).
 
 Создать первого пользователя:
   $COMPOSE_CMD exec synapse register_new_matrix_user -c /data/homeserver.yaml http://localhost:8008

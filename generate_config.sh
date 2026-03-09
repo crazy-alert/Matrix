@@ -12,30 +12,6 @@ info()  { echo -e "${GREEN}[INFO]${NC} $1"; }
 warn()  { echo -e "${YELLOW}[WARN]${NC} $1"; }
 error() { echo -e "${RED}[ERROR]${NC} $1"; exit 1; }
 
-# Генератор пароля
-generate_password() {
-    tr -dc 'a-zA-Z0-9!@#$%^&*()_+' < /dev/urandom 2>/dev/null | fold -w 32 | head -n1 || openssl rand -base64 32
-}
-
-# Генерация/проверка пароля PostgreSQL
-setup_postgres_password() {
-    local env_file="$1"
-    if ! grep -q '^POSTGRES_PASSWORD=' "$env_file"; then
-        NEW_PASS=$(generate_password)
-        echo "POSTGRES_PASSWORD=$NEW_PASS" >> "$env_file"
-        info "Сгенерирован новый пароль PostgreSQL и добавлен в .env"
-    else
-        CURRENT_PASS=$(grep '^POSTGRES_PASSWORD=' "$env_file" | cut -d'=' -f2-)
-        if [ "$CURRENT_PASS" = "changeme" ]; then
-            NEW_PASS=$(generate_password)
-            sed -i "s/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=$NEW_PASS/" "$env_file"
-            info "Пароль PostgreSQL изменён с 'changeme' на случайный"
-        else
-            info "Пароль PostgreSQL уже задан в .env"
-        fi
-    fi
-}
-
 # ----------------------------------------------------------------------
 # Основная часть
 # ----------------------------------------------------------------------
@@ -44,9 +20,6 @@ setup_postgres_password() {
 if [ ! -f .env ]; then
     error "Файл .env не найден!"
 fi
-
-# Генерируем пароль БД (если требуется) до загрузки переменных
-setup_postgres_password ".env"
 
 # Загружаем переменные
 set -a
