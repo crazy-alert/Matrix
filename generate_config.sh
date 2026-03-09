@@ -64,9 +64,9 @@ fi
 # Определяем имя сервера
 SERVER_NAME="${MATRIX_SERVER_NAME:-$DOMAIN}"
 
-info " $DOMAIN : $DOMAIN"
-info " SERVER_NAME : $SERVER_NAME"
-info " MATRIX_SERVER_NAME : $MATRIX_SERVER_NAME"
+info "  ! ! ! ! check    DOMAIN : $DOMAIN"
+info "  ! ! ! ! check    SERVER_NAME : $SERVER_NAME"
+info "  ! ! ! ! check    MATRIX_SERVER_NAME : $MATRIX_SERVER_NAME"
 
 # Генерация секретов, если отсутствуют
 if [ -z "$MACAROON_SECRET_KEY" ]; then
